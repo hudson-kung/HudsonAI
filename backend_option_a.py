@@ -1,6 +1,6 @@
 """
-OPTION B: Hosted Model API (Together AI)
-FastAPI backend that connects to Together AI for Mistral models
+OPTION A: Self-hosted Ollama on VPS
+FastAPI backend that connects to a cloud-hosted Ollama instance
 """
 
 from fastapi import FastAPI, HTTPException
@@ -11,7 +11,7 @@ import httpx
 import os
 import json
 
-app = FastAPI(title="Chatbot API - Together AI")
+app = FastAPI(title="Chatbot API - Self-hosted Ollama")
 
 # CORS configuration
 app.add_middleware(
@@ -23,12 +23,12 @@ app.add_middleware(
 )
 
 # Configuration
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
-TOGETHER_MODEL = os.getenv("TOGETHER_MODEL", "mistralai/Mistral-7B-Instruct-v0.2")
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 API_KEY = os.getenv("API_KEY", "")  # Optional API key for security
 
-if not TOGETHER_API_KEY:
-    raise ValueError("TOGETHER_API_KEY environment variable is required")
+if not OLLAMA_API_URL:
+    raise ValueError("OLLAMA_API_URL environment variable is required")
 
 class Message(BaseModel):
     role: str
@@ -36,7 +36,7 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[Message]
-    model: str = TOGETHER_MODEL
+    model: str = OLLAMA_MODEL
     stream: bool = False
     api_key: str = ""  # Optional for security
 
@@ -49,20 +49,16 @@ async def health():
     """Health check endpoint"""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            # Simple test call to Together AI
-            response = await client.get(
-                "https://api.together.xyz/v1/models",
-                headers={"Authorization": f"Bearer {TOGETHER_API_KEY}"}
-            )
+            response = await client.get(f"{OLLAMA_API_URL}/api/tags")
             return {
                 "status": "healthy",
-                "together_connected": response.status_code == 200,
-                "model": TOGETHER_MODEL
+                "ollama_connected": response.status_code == 200,
+                "model": OLLAMA_MODEL
             }
     except Exception as e:
         return {
             "status": "unhealthy",
-            "together_connected": False,
+            "ollama_connected": False,
             "error": str(e)
         }
 
@@ -79,11 +75,7 @@ async def chat(request: ChatRequest):
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
-                "https://api.together.xyz/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {TOGETHER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
+                f"{OLLAMA_API_URL}/v1/chat/completions",
                 json={
                     "model": request.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
@@ -97,7 +89,7 @@ async def chat(request: ChatRequest):
                 error_data = response.json()
                 raise HTTPException(
                     status_code=response.status_code,
-                    detail=error_data.get("error", {}).get("message", "Together AI error")
+                    detail=error_data.get("error", "Ollama API error")
                 )
             
             data = response.json()
@@ -128,11 +120,7 @@ async def chat_stream(request: ChatRequest):
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
-                    "https://api.together.xyz/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {TOGETHER_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
+                    f"{OLLAMA_API_URL}/v1/chat/completions",
                     json={
                         "model": request.model,
                         "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
@@ -142,7 +130,7 @@ async def chat_stream(request: ChatRequest):
                     }
                 ) as response:
                     if response.status_code != 200:
-                        yield f"data: {json.dumps({'error': 'Together AI error'})}\n\n"
+                        yield f"data: {json.dumps({'error': 'Ollama API error'})}\n\n"
                         return
                     
                     async for line in response.aiter_lines():

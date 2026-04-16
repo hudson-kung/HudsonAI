@@ -13,7 +13,8 @@
     }
   ],
   "env": {
-    "OLLAMA_API_URL": "https://your-ollama-cloud-server.com",
-    "OLLAMA_MODEL": "mistral"
+    "TOGETHER_API_KEY": "",
+    "TOGETHER_MODEL": "mistralai/Mistral-7B-Instruct-v0.2",
+    "API_KEY": ""
   }
 }
