@@ -13,7 +13,7 @@
     }
   ],
   "env": {
-    "OPENAI_API_KEY": "",
-    "OPENAI_MODEL": "gpt-3.5-turbo"
+    "OLLAMA_API_URL": "https://your-ollama-cloud-server.com",
+    "OLLAMA_MODEL": "mistral"
   }
 }

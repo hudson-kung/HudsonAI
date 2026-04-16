@@ -94,7 +94,7 @@
                     console.error('Error:', error);
                     setMessages(prev => [...prev, { 
                         role: 'assistant', 
-                        content: `Error: ${error.message}. \n\nPlease:\n1. Make sure the FastAPI backend is running\n2. Configure your OpenAI API key in the environment` 
+                        content: `Error: ${error.message}. \n\nPlease:\n1. Make sure the FastAPI backend is running\n2. Configure OLLAMA_API_URL to point to a cloud-hosted Ollama instance` 
                     }]);
                 } finally {
                     setIsLoading(false);

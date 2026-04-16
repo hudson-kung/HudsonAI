@@ -25,8 +25,8 @@ app.add_middleware(
 )
 
 # Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 
 class Message(BaseModel):
     role: str
@@ -42,21 +42,19 @@ class ChatResponse(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "api_configured": bool(OPENAI_API_KEY)}
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{OLLAMA_API_URL}/api/tags", timeout=5.0)
+            return {"status": "healthy", "ollama_connected": response.status_code == 200}
+    except:
+        return {"status": "unhealthy", "ollama_connected": False}
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-    
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
+                f"{OLLAMA_API_URL}/v1/chat/completions",
                 json={
                     "model": request.model,
                     "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
@@ -67,8 +65,7 @@ async def chat(request: ChatRequest):
             )
             
             if response.status_code != 200:
-                error_data = response.json()
-                raise HTTPException(status_code=response.status_code, detail=error_data.get("error", {}).get("message", "OpenAI API error"))
+                raise HTTPException(status_code=response.status_code, detail="Ollama API error")
             
             data = response.json()
             
