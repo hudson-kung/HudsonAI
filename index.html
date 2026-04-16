@@ -68,7 +68,7 @@
                 setIsLoading(true);
 
                 try {
-                    const response = await fetch('http://localhost:11434/v1/chat/completions', {
+                    const response = await fetch('/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -78,25 +78,23 @@
                             messages: [
                                 ...messages.map(m => ({ role: m.role, content: m.content })),
                                 { role: 'user', content: userMessage }
-                            ],
-                            max_tokens: 1000,
-                            temperature: 0.7
+                            ]
                         })
                     });
 
                     const data = await response.json();
                     
-                    if (data.error) {
-                        throw new Error(data.error.message);
+                    if (data.detail) {
+                        throw new Error(data.detail);
                     }
 
-                    const assistantMessage = data.choices[0].message.content;
+                    const assistantMessage = data.content;
                     setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
                 } catch (error) {
                     console.error('Error:', error);
                     setMessages(prev => [...prev, { 
                         role: 'assistant', 
-                        content: `Error: ${error.message}. \n\nPlease:\n1. Make sure Ollama is running\n2. Install a model (e.g., run 'ollama pull llama2' in terminal)\n3. Or change the model name in the selector above to a model you have installed` 
+                        content: `Error: ${error.message}. \n\nPlease:\n1. Make sure the FastAPI backend is running\n2. Configure your OpenAI API key in the environment` 
                     }]);
                 } finally {
                     setIsLoading(false);
